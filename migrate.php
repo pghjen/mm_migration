@@ -1,16 +1,16 @@
 <?php
     /* Global Settings */
     $globals = array(
-        "mysql_host"    => "mysql",
         "prod_dump"     => "/srv/prod_dump.sql",
         "lock_file"     => "migrate.lock"
     );
     $configInput = array (
         "state"         => 0,
-        "stratus"       => true,
+        "stratus"       => false,
         "magento"       => 0,
         "origin_port"   => 22,
-        "new_root"      => "/srv/public_html"
+        "new_root"      => "/srv/public_html/",
+        "db_host"       => "mysql"
         );
 
     /* Main Loop */
@@ -18,11 +18,23 @@
     {
         switch( $configInput['state'] )
         {
+            case 1:
+                echo "Prepping Server:\n";
+                echo "\tDropping database.\n";
+                //DropDatabaseTables();
+                echo "\tDeleting current web root.\n";
+                if( file_exists($configInput['new_root']) )
+                    echo "rm -rf ". $configInput['new_root'] ."\n";
+                    //RunCommand( "rm -rf ".$configInput['new_root'] );
+                SwitchState(2);
+                break;
             default:
                 SetupOptions();
                 break;
         }
     }
+    
+
     /* Look for lock file. If it exists, open and read data */
     function SetupOptions()
     {
@@ -70,6 +82,7 @@
         
             echo "\n\n------ Destination Server Info ------\n";
             
+            getInput( 'Database Host [mysql]', 'db_host' );
             getInput( 'Database Name', 'db_name' );
             getInput( 'Database User', 'db_user' );
             getInput( 'Database Pass', 'db_pass' );
@@ -84,14 +97,23 @@
             if( strpos($configInput['new_root'], 'srv') !== false )
                 $configInput['stratus'] = true;
     
-            $configInput['state'] = 1;
-            
-            //Encode the array into a JSON string.
-            $json = json_encode( $configInput );
-     
-            //Save the file.
-            file_put_contents( $globals['lock_file'], $json );
+            SwitchState(1);
+            return;
         }
+    }
+
+    function SwitchState($state)
+    {
+        global $configInput, $globals;
+        
+        $configInput['state'] = $state;
+        
+        //Encode the array into a JSON string.
+        $json = json_encode( $configInput );
+        
+        //Save the file.
+        file_put_contents( $globals['lock_file'], $json );
+        return;
     }
     
     function getInput($question, $key)
@@ -103,7 +125,7 @@
         $input = trim( fgets(STDIN) );
         
         /* Check for empty entries, allowing blank origin_port, new_root & rsync_flags */
-        if( strlen($input) < 1 && ($key != 'origin_port' && $key != 'new_root' && $key != 'rsync_flags') )
+        if( strlen($input) < 1 && ($key != 'origin_port' && $key != 'new_root' && $key != 'rsync_flags' && $key != 'db_host') )
             getInput( $question." (or Q to quit)", $key );
 
         /* Single character entry - quit signal? */
@@ -139,10 +161,46 @@
         /* Check Magento version */
         if( $key == 'magento' && ($input != 1 && $input != 2) )
             getInput( $question.' (or Q to quit)', $key );
-            
+
         /* Don't rewrite value if it is blank to keep defaults */
         if( strlen($input) > 0 )
             $configInput[$key] = $input;
         
         return;
+    }
+
+
+    function DropDatabaseTables()
+    {
+        global $configInput;
+        
+        $mysqli = new mysqli( $configInput['db_host'], $configInput['db_user'], $configInput['db_pass'], $configInput['db_name'] );
+        $mysqli->select_db( $configInput['db_name'] );
+        
+        $mysqli->query( "SET foreign_key_checks = 0" );
+        
+        if( $result = $mysqli->query("SHOW TABLES") )
+        {
+            while( $row = $result->fetch_array(MYSQLI_NUM) )
+                $mysqli->query( 'DROP TABLE IF EXISTS '.$row[0] );
+        }
+        $mysqli->query( 'SET foreign_key_checks = 1' );
+        $mysqli->close();
+    }
+    
+    function RunCommand($cmd)
+    {
+        // Runs generic shell command and streams
+        
+        while( @ ob_end_flush() ); // End any output buffers
+        
+        $proc = popen( $cmd, 'r' );
+        echo "\n";
+        
+        while( !feof($proc) )
+        {
+            echo fread($proc, 4096);
+            @ flush();
+        }
+        echo "\n";
     }
