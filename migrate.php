@@ -12,49 +12,86 @@
         "origin_port"   => 22,
         "new_root"      => "/srv/public_html"
         );
-    $stratus = false;
-    
-    /* Look for lock file. If it exists, open and read data */
-    if( file_exists( $globals['lock_file']) )
+
+    /* Main Loop */
+    while(1)
     {
-        echo "File exists.\n";
-        exit(0);
+        switch( $configInput['state'] )
+        {
+            default:
+                SetupOptions();
+                break;
+        }
     }
-    else
+    /* Look for lock file. If it exists, open and read data */
+    function SetupOptions()
     {
-        /* Lock file doesn't exist, create new file */
-        echo "------ Originating Server Info ------\n";
+        global $globals, $configInput;
         
-        getInput( 'Originating Username', 'origin_user' );
-        getInput( 'Originating Server', 'origin_server' );
-        getInput( 'Originating Port [22]', 'origin_port' );
-        getInput( 'Originating Webroot', 'origin_root' );        
+        if( file_exists( $globals['lock_file']) )
+        {
+            echo "File exists.\n";
+            //Load the file
+            $contents = file_get_contents( $globals['lock_file'] );
     
-        echo "\n\n------ Destination Server Info ------\n";
+            //Decode the JSON data into a PHP array.
+            $configInput = json_decode( $contents, true );
+    
+            if( $configInput['state'] > 0 )
+            {
+                echo "[R]estart, [C]ontinue, [Q]uit? ";
+                $input = trim( fgets(STDIN) );
+                
+                if( strtolower($input) == 'r')
+                {
+                    unlink( $globals['lock_file'] );
+                    SetupOptions();
+                    return;
+                }
+                else if( strtolower($input) == 'q' )
+                {
+                    // unlink( $globals['lock_file'] );
+                    echo "Goodbye!\n";
+                    exit(0);
+                }
+                else
+                    return;
+            }
+        }
+        else
+        {
+            /* Lock file doesn't exist, create new file */
+            echo "------ Originating Server Info ------\n";
+            
+            getInput( 'Originating Username', 'origin_user' );
+            getInput( 'Originating Server', 'origin_server' );
+            getInput( 'Originating Port [22]', 'origin_port' );
+            getInput( 'Originating Webroot', 'origin_root' );        
         
-        getInput( 'Database Name', 'db_name' );
-        getInput( 'Database User', 'db_user' );
-        getInput( 'Database Pass', 'db_pass' );
-        getInput( 'New Webroot [/srv/public_html/]', 'new_root' );
-
-        echo "\n\n------ General Info ------\n";
-        echo "\nBase URL: ";
-        getInput( 'Base URL', 'base_url' );
-        getInput( 'Magento 1 or 2?', 'magento' );
-        getInput( 'Additional Rsync Flags (if any)', 'rsync_flags' );
-
-        if( strpos($configInput['new_root'], 'srv') !== false )
-            $configInput['stratus'] = true;
-
-        $configInput['state'] = 1;
-        
-        //Encode the array into a JSON string.
-        $json = json_encode( $configInput );
- 
-        //Save the file.
-        file_put_contents( $globals['lock_file'], $json );
-        
-
+            echo "\n\n------ Destination Server Info ------\n";
+            
+            getInput( 'Database Name', 'db_name' );
+            getInput( 'Database User', 'db_user' );
+            getInput( 'Database Pass', 'db_pass' );
+            getInput( 'New Webroot [/srv/public_html/]', 'new_root' );
+    
+            echo "\n\n------ General Info ------\n";
+            echo "\nBase URL: ";
+            getInput( 'Base URL', 'base_url' );
+            getInput( 'Magento 1 or 2?', 'magento' );
+            getInput( 'Additional Rsync Flags (if any)', 'rsync_flags' );
+    
+            if( strpos($configInput['new_root'], 'srv') !== false )
+                $configInput['stratus'] = true;
+    
+            $configInput['state'] = 1;
+            
+            //Encode the array into a JSON string.
+            $json = json_encode( $configInput );
+     
+            //Save the file.
+            file_put_contents( $globals['lock_file'], $json );
+        }
     }
     
     function getInput($question, $key)
