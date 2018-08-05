@@ -27,6 +27,7 @@
                     echo "rm -rf ". $configInput['new_root'] ."\n";
                     //RunCommand( "rm -rf ".$configInput['new_root'] );
                 SwitchState(2);
+                exit(0);
                 break;
                 
             case 2:
@@ -70,10 +71,25 @@
     
             //Decode the JSON data into a PHP array.
             $configInput = json_decode( $contents, true );
+            echo "\n------ Originating Server Info ------";
+            echo "\nOriginating Username:\t".$configInput['origin_user'];
+            echo "\nOriginating Server:\t". $configInput['origin_server'];
+            echo "\nOriginating Port:\t".   $configInput['origin_port'];
+            echo "\nOriginating Webroot:\t".$configInput['origin_root'];
+            echo "\n\n------ Destination Server Info ------";
+            echo "\nDatabase Host:\t".  $configInput['db_host'];
+            echo "\nDatabase Name:\t".  $configInput['db_name'];
+            echo "\nDatabase User:\t".  $configInput['db_user'];
+            echo "\nDatabase Pass:\t".  $configInput['db_pass'];
+            echo "\nNew Webroot:\t".    $configInput['new_root'];
+            echo "\n\n------ General Info ------";
+            echo "\nBase URL:\t\t".       $configInput['base_url'];
+            echo "\nMagento Version:\t".$configInput['magento'];
+            echo "\nAdditional Rsync Flags:\t".$configInput['rsync_flags'];
     
             if( $configInput['state'] > 0 )
             {
-                echo "[R]estart, [C]ontinue, [Q]uit? ";
+                echo "\n\n[R]estart, [C]ontinue, [Q]uit? ";
                 $input = trim( fgets(STDIN) );
                 
                 if( strtolower($input) == 'r')
@@ -158,7 +174,7 @@
         }
 
         /* Sanity checking - slashes at start & end of directory paths */
-        if( $key == 'origin_root' || $key == 'new_root' )
+        if( $key == 'origin_root' || ($key == 'new_root' && strlen($input) > 0) )
         {
             if( $input[0] != '/' )
                 $input = '/'.$input;
