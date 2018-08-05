@@ -28,6 +28,28 @@
                     //RunCommand( "rm -rf ".$configInput['new_root'] );
                 SwitchState(2);
                 break;
+                
+            case 2:
+                echo "Copying files from remote.\n";
+                SwitchState(3);
+                break;
+                
+            case 3:
+                echo "Getting remote database.\n";
+                SwitchState(4);
+                break;
+                
+            case 4:
+                echo "Setting configurations.\n";
+                SwitchState(5);
+                break;
+                
+            case 5:
+                echo "Cleaning up.\n";
+                //unlink( $configInput['lock_file'] );
+                echo "\tDone!\n";
+                exit(0);
+                
             default:
                 SetupOptions();
                 break;
