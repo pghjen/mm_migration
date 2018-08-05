@@ -46,7 +46,14 @@
         if( strpos($configInput['new_root'], 'srv') !== false )
             $configInput['stratus'] = true;
 
-        var_dump( $configInput );
+        $configInput['state'] = 1;
+        
+        //Encode the array into a JSON string.
+        $json = json_encode( $configInput );
+ 
+        //Save the file.
+        file_put_contents( $globals['lock_file'], $json );
+        
 
     }
     
