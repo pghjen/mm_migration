@@ -47,12 +47,13 @@
                 
             case 3:
                 echo "Getting remote database.\n";
+                GetDb();
                 SwitchState(4);
                 break;
                 
             case 4:
-                echo "Getting remote database.\n";
-                GetDb();
+                echo "Importing database.\n";
+                ImportDb();
                 SwitchState(5);
                 
             case 5:
@@ -338,4 +339,16 @@
             );
         }
         return $dbInfo;
+    }
+    
+    function ImportDb()
+    {
+        global $configInput;
+        
+        RunCommand( "sed -i 's/DEFINER=[^*]*\*/\*/g' ".$configInput['new_root']."prod_dump.sql" );
+        
+        $cmd = 'mysql -h '.$configInput['db_host'].' -u '.$configInput['db_user'].' -p'.$configInput['db_pass'].' '.$configInput['db_name']
+            .' < '.$configInput['new_root'].'prod_dump.sql';
+            
+        RunCommand( $cmd );
     }
