@@ -13,6 +13,15 @@
         "db_host"       => "mysql"
         );
 
+    class SimpleXMLExtended extends SimpleXMLElement {
+        public function addCData( $cData_text )
+        {
+            $node = dom_import_simplexml( $this );
+            $no   = $node->ownerDocument;
+            $node->appendChild( $no->createCDataSection( $cData_text ));
+        }
+    }
+
     /* Main Loop */
     while(1)
     {
@@ -32,6 +41,7 @@
                 
             case 2:
                 echo "Copying files from remote.\n";
+                Rsync();
                 SwitchState(3);
                 break;
                 
@@ -41,11 +51,16 @@
                 break;
                 
             case 4:
-                echo "Setting configurations.\n";
+                echo "Getting remote database.\n";
+                GetDb();
                 SwitchState(5);
-                break;
                 
             case 5:
+                echo "Setting configurations.\n";
+                SwitchState(6);
+                break;
+                
+            case 6:
                 echo "Cleaning up.\n";
                 //unlink( $configInput['lock_file'] );
                 echo "\tDone!\n";
@@ -241,4 +256,86 @@
             @ flush();
         }
         echo "\n";
+    }
+    
+    function Rsync()
+    {
+        global $configInput;
+        
+        $cmd = 'rsync -avz -e "ssh -p '
+                .$configInput['origin_port']
+                .'" '
+                .$configInput['origin_user'].'@'.$configInput['origin_server'].':'.$configInput['origin_root'].' '
+                .$configInput['web_root']
+                .' --copy-links '.$configInput['rsync_flags'];
+                
+        print_r( $cmd."\nPassword:");
+        print_r($configInput['ssh_pass']);
+        
+        while( @ ob_end_flush() ); // End any output buffers
+        
+        $proc = popen( $cmd, 'r' );
+        echo "\n";
+        
+        while( !feof($proc) )
+        {
+            echo fread( $proc, 4096 );
+            @ flush();
+        }
+        echo "\n";
+        
+    }
+
+    function GetDb()
+    {
+        global $configInput;
+        
+        $dbInfo = GetDbInfo();
+        
+        $cmd = 'ssh -p '.$configInput['origin_port'].' '.$configInput['origin_user'].'@'.$configInput['origin_server']
+            .' "mysqldump --routines -u '.$dbInfo['db_user'].' -p'.$dbInfo['db_pass'].' '.$dbInfo['db'].' " > '.$configInput['new_root'].'prod_dump.sql';
+            
+        print_r( $cmd."\nPassword: " );
+        print_r( $configInput['ssh_pass'] );
+        
+        RunCommand( $cmd );
+    }
+    
+    function GetDbInfo()
+    {
+        global $configInput;
+        
+        if( $configInput['magento'] == 2 )
+        {
+            $path = $configInput['web_root']."app/etc/env.php";
+            
+            try {
+                $data = include $path;
+            } catch (\Exception $e) {
+                throw new \Exception("Could not open env.php ".$e );
+            }
+            
+            $dbInfo = array (
+                'db'        => $data['db']['connection']['default']['dbname'],
+                'db_user'   => $data['db']['connection']['default']['username'],
+                'db_pass'   => $data['db']['connection']['default']['password'],
+                'db_host'   => $data['db']['connection']['default']['host'],
+                'prefix'    => $data['db']['table_prefix']
+            );
+        }
+        else
+        {
+            $path = $configInput['web_root']."app/etc/local.xml";
+            $xmlFile = file_get_contents($path);
+            $xml = new SimpleXMLExtended($xmlFile);
+            
+            $dbInfo = array (
+                'db'        =>  $xml->global->resources->default_setup->connection->dbname,
+                'db_user'   =>  $xml->global->resources->default_setup->connection->username,
+                'db_pass'   =>  $xml->global->resources->default_setup->connection->password,
+                'db_host'   =>  $xml->global->resources->default_setup->connection->host,
+                'prefix'    =>  $xml->global->resources->db->table_prefix
+            );
+        }
+        return $dbInfo;
     }
