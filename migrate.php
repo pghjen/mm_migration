@@ -87,25 +87,11 @@
     
             //Decode the JSON data into a PHP array.
             $configInput = json_decode( $contents, true );
-            echo "\n------ Originating Server Info ------";
-            echo "\nOriginating Username:\t".$configInput['origin_user'];
-            echo "\nOriginating Server:\t". $configInput['origin_server'];
-            echo "\nOriginating Port:\t".   $configInput['origin_port'];
-            echo "\nOriginating Webroot:\t".$configInput['origin_root'];
-            echo "\n\n------ Destination Server Info ------";
-            echo "\nDatabase Host:\t".  $configInput['db_host'];
-            echo "\nDatabase Name:\t".  $configInput['db_name'];
-            echo "\nDatabase User:\t".  $configInput['db_user'];
-            echo "\nDatabase Pass:\t".  $configInput['db_pass'];
-            echo "\nNew Webroot:\t".    $configInput['new_root'];
-            echo "\n\n------ General Info ------";
-            echo "\nBase URL:\t\t".       $configInput['base_url'];
-            echo "\nMagento Version:\t".$configInput['magento'];
-            echo "\nAdditional Rsync Flags:\t".$configInput['rsync_flags'];
-    
+            OutputConfig($configInput, true);
+            
             if( $configInput['state'] > 0 )
             {
-                echo "\n\n[R]estart, [C]ontinue, [Q]uit? ";
+                echo "\n\n[R]estart, [C]ontinue, [E]dit, [J]ump To, or [Q]uit? ";
                 $input = trim( fgets(STDIN) );
                 
                 if( strtolower($input) == 'r')
@@ -120,7 +106,25 @@
                     echo "Goodbye!\n";
                     exit(0);
                 }
-                else
+                else if( strtolower($input) == 'j' )
+                {
+                    jump:
+                    // Output Jump menu.
+                    echo "\n[1] Clear public_html and db.";
+                    echo "\n[2] Rsync Copy Files.";
+                    echo "\n[3] Get Remote Database.";
+                    echo "\n[4] Import Database.";
+                    echo "\n[5] Set Configurations.";
+                    echo "\n[6] Cleanup.";
+                    
+                    echo "\n\nChoice: ";
+                    $in = trim( fgets(STDIN) );
+                    
+                    if( $in > 0 && $in < 7 )
+                        SwitchState($in);
+                    else
+                        goto jump;
+                }
                     return;
             }
         }
@@ -154,6 +158,26 @@
             SwitchState(1);
             return;
         }
+    }
+    
+    function OutputConfig($in, $nums=false)
+    {
+        echo "\n------ Originating Server Info ------";
+        echo "\n"   .$nums===true ? "[ 1] ": ""  ."Originating Username:\t".$configInput['origin_user'];
+        echo "\n"   .$nums===true ? "[ 2] ": ""  ."Originating Server:\t". $configInput['origin_server'];
+        echo "\n"   .$nums===true ? "[ 3] ": ""  ."Originating Port:\t".   $configInput['origin_port'];
+        echo "\n"   .$nums===true ? "[ 4] ": ""  ."Originating Webroot:\t".$configInput['origin_root'];
+        echo "\n\n------ Destination Server Info ------";
+        echo "\n"   .$nums===true ? "[ 5] ": ""  ."Database Host:\t".  $configInput['db_host'];
+        echo "\n"   .$nums===true ? "[ 6] ": ""  ."Database Name:\t".  $configInput['db_name'];
+        echo "\n"   .$nums===true ? "[ 7] ": ""  ."Database User:\t".  $configInput['db_user'];
+        echo "\n"   .$nums===true ? "[ 8] ": ""  ."Database Pass:\t".  $configInput['db_pass'];
+        echo "\n"   .$nums===true ? "[ 9] ": ""  ."New Webroot:\t".    $configInput['new_root'];
+        echo "\n\n------ General Info ------";
+        echo "\n"   .$nums===true ? "[10] ": ""  ."Base URL:\t\t".       $configInput['base_url'];
+        echo "\n"   .$nums===true ? "[11] ": ""  ."Magento Version:\t".$configInput['magento'];
+        echo "\n"   .$nums===true ? "[12] ": ""  ."Additional Rsync Flags:\t".$configInput['rsync_flags'];
+        echo "\n"   .$nums===true ? "[13] ": ""  ."Rsync Command:\t".$configInput['rsync_cmd'];
     }
 
     function SwitchState($state)
