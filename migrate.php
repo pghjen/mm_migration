@@ -28,6 +28,7 @@
         switch( $configInput['state'] )
         {
             case 1:
+                /* Drop local/default web root directory and database to prep for new files coming in */
                 echo "Prepping Server:\n";
                 echo "\tDropping database.\n";
                 //DropDatabaseTables();
@@ -154,6 +155,18 @@
     
             if( strpos($configInput['new_root'], 'srv') !== false )
                 $configInput['stratus'] = true;
+                
+            $configInput['rsync_cmd'] = 'rsync -avz -e "ssh -p '
+                .$configInput['origin_port']
+                .'" '
+                .$configInput['origin_user'].'@'.$configInput['origin_server'].':'.$configInput['origin_root'].' '
+                .$configInput['web_root']
+                .$configInput['new_root'].' '
+                .' --copy-links '.$configInput['rsync_flags'];
+
+            echo "\nRsync Command: \n".$configInput['rsync_cmd'];
+            
+            getInput( "\nAccept? (Y/n): ", 'rsync_cmd' );
     
             SwitchState(1);
             return;
@@ -203,14 +216,25 @@
         $input = trim( fgets(STDIN) );
         
         /* Check for empty entries, allowing blank origin_port, new_root & rsync_flags */
-        if( strlen($input) < 1 && ($key != 'origin_port' && $key != 'new_root' && $key != 'rsync_flags' && $key != 'db_host') )
+        if( strlen($input) < 1 && ($key != 'origin_port' && $key != 'new_root' && $key != 'rsync_flags' && $key != 'db_host' && $key != 'rsync_cmd') )
             getInput( $question." (or Q to quit)", $key );
 
         /* Single character entry - quit signal? */
         else if( strlen( $input ) == 1 && (strtolower($input) == 'q') )
         {
-            echo "\nGoodbye!\n";
-            exit(0);
+            if( strtolower($input) == 'q' )
+            {
+                echo "\nGoodbye!\n";
+                exit(0);
+            }
+            else if( strtolower($input) == 'n' && $key == 'rsync_cmd' )
+            {
+                echo "\nEnter new rsync command line: \n";
+                $input = trim( fgets(STDIN) );
+            }
+            else if( strtolower($input) == 'y' && $key == 'rsync_cmd' )
+                return;
+                
         }
 
         /* Sanity checking - slashes at start & end of directory paths */
@@ -292,6 +316,7 @@
                 .'" '
                 .$configInput['origin_user'].'@'.$configInput['origin_server'].':'.$configInput['origin_root'].' '
                 .$configInput['web_root']
+                .$configInput['new_root'].' '
                 .' --copy-links '.$configInput['rsync_flags'];
                 
         print_r( $cmd."\nPassword:");
