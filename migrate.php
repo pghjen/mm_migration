@@ -37,7 +37,7 @@
                     echo "rm -rf ". $configInput['new_root'] ."\n";
                     //RunCommand( "rm -rf ".$configInput['new_root'] );
                 SwitchState(2);
-                exit(0);
+//                exit(0);
                 break;
                 
             case 2:
@@ -88,7 +88,7 @@
     
             //Decode the JSON data into a PHP array.
             $configInput = json_decode( $contents, true );
-            OutputConfig($configInput, true);
+            OutputConfig($configInput, false);
             
             if( $configInput['state'] > 0 )
             {
@@ -107,6 +107,7 @@
                     echo "Goodbye!\n";
                     exit(0);
                 }
+                /* Need to add edit functionality */
                 else if( strtolower($input) == 'j' )
                 {
                     jump:
@@ -150,7 +151,7 @@
             echo "\n\n------ General Info ------\n";
             echo "\nBase URL: ";
             getInput( 'Base URL', 'base_url' );
-            getInput( 'Magento 1 or 2?', 'magento' );
+//            getInput( 'Magento 1 or 2?', 'magento' );
             getInput( 'Additional Rsync Flags (if any)', 'rsync_flags' );
     
             if( strpos($configInput['new_root'], 'srv') !== false )
@@ -160,7 +161,6 @@
                 .$configInput['origin_port']
                 .'" '
                 .$configInput['origin_user'].'@'.$configInput['origin_server'].':'.$configInput['origin_root'].' '
-                .$configInput['web_root']
                 .$configInput['new_root'].' '
                 .' --copy-links '.$configInput['rsync_flags'];
 
@@ -176,21 +176,20 @@
     function OutputConfig($in, $nums=false)
     {
         echo "\n------ Originating Server Info ------";
-        echo "\n"   .$nums===true ? "[ 1] ": ""  ."Originating Username:\t".$configInput['origin_user'];
-        echo "\n"   .$nums===true ? "[ 2] ": ""  ."Originating Server:\t". $configInput['origin_server'];
-        echo "\n"   .$nums===true ? "[ 3] ": ""  ."Originating Port:\t".   $configInput['origin_port'];
-        echo "\n"   .$nums===true ? "[ 4] ": ""  ."Originating Webroot:\t".$configInput['origin_root'];
+        printf( "\n%sOriginating Username:\t%s",    $nums===true ? "[ 1] ": "", $in['origin_user'] );
+        printf( "\n%sOriginating Server:\t%s",      $nums===true ? "[ 2] ": "", $in['origin_user'] );
+        printf( "\n%sOriginating Port:\t%s",        $nums===true ? "[ 3] ": "", $in['origin_port'] );
+        printf( "\n%sOriginating Webroot:\t%s",     $nums===true ? "[ 4] ": "", $in['origin_root'] );
         echo "\n\n------ Destination Server Info ------";
-        echo "\n"   .$nums===true ? "[ 5] ": ""  ."Database Host:\t".  $configInput['db_host'];
-        echo "\n"   .$nums===true ? "[ 6] ": ""  ."Database Name:\t".  $configInput['db_name'];
-        echo "\n"   .$nums===true ? "[ 7] ": ""  ."Database User:\t".  $configInput['db_user'];
-        echo "\n"   .$nums===true ? "[ 8] ": ""  ."Database Pass:\t".  $configInput['db_pass'];
-        echo "\n"   .$nums===true ? "[ 9] ": ""  ."New Webroot:\t".    $configInput['new_root'];
+        printf( "\n%sDatabase Host:\t%s",           $nums===true ? "[ 5] ": "", $in['db_host'] );
+        printf( "\n%sDatabase Name:\t%s",           $nums===true ? "[ 6] ": "", $in['db_name'] );
+        printf( "\n%sDatabase User:\t%s",           $nums===true ? "[ 7] ": "", $in['db_user'] );
+        printf( "\n%sDatabase Pass:\t%s",           $nums===true ? "[ 8] ": "", $in['db_pass'] );
+        printf( "\n%sNew Webroot:\t%s",             $nums===true ? "[ 9] ": "", $in['new_root'] );
         echo "\n\n------ General Info ------";
-        echo "\n"   .$nums===true ? "[10] ": ""  ."Base URL:\t\t".       $configInput['base_url'];
-        echo "\n"   .$nums===true ? "[11] ": ""  ."Magento Version:\t".$configInput['magento'];
-        echo "\n"   .$nums===true ? "[12] ": ""  ."Additional Rsync Flags:\t".$configInput['rsync_flags'];
-        echo "\n"   .$nums===true ? "[13] ": ""  ."Rsync Command:\t".$configInput['rsync_cmd'];
+        printf( "\n%sBase URL:\t\t%s",              $nums===true ? "[10] ": "", $in['base_url'] );
+        printf( "\n%sAdditional Rsync Flags:\t%s",  $nums===true ? "[11] ": "", $in['rsync_flags'] );
+        printf( "\n%sRsync Command:\t%s",           $nums===true ? "[12] ": "", $in['rsync_cmd'] );
     }
 
     function SwitchState($state)
@@ -220,7 +219,7 @@
             getInput( $question." (or Q to quit)", $key );
 
         /* Single character entry - quit signal? */
-        else if( strlen( $input ) == 1 && (strtolower($input) == 'q') )
+        else if( strlen( $input ) == 1 )
         {
             if( strtolower($input) == 'q' )
             {
@@ -233,8 +232,10 @@
                 $input = trim( fgets(STDIN) );
             }
             else if( strtolower($input) == 'y' && $key == 'rsync_cmd' )
+            {
+                $input = $configInput['rsync_cmd'];
                 return;
-                
+            }
         }
 
         /* Sanity checking - slashes at start & end of directory paths */
@@ -276,18 +277,19 @@
     {
         global $configInput;
         
-        $mysqli = new mysqli( $configInput['db_host'], $configInput['db_user'], $configInput['db_pass'], $configInput['db_name'] );
-        $mysqli->select_db( $configInput['db_name'] );
+        //$mysqli = new mysqli( $configInput['db_host'], $configInput['db_user'], $configInput['db_pass'], $configInput['db_name'] );
+        echo "Connection details: ".$configInput['db_host']." ".$configInput['db_user']." ".$configInput['db_pass']." ".$configInput['db_name'];
+        //$mysqli->select_db( $configInput['db_name'] );
         
-        $mysqli->query( "SET foreign_key_checks = 0" );
+        //$mysqli->query( "SET foreign_key_checks = 0" );
         
-        if( $result = $mysqli->query("SHOW TABLES") )
-        {
-            while( $row = $result->fetch_array(MYSQLI_NUM) )
-                $mysqli->query( 'DROP TABLE IF EXISTS '.$row[0] );
-        }
-        $mysqli->query( 'SET foreign_key_checks = 1' );
-        $mysqli->close();
+        //if( $result = $mysqli->query("SHOW TABLES") )
+        //{
+        //    while( $row = $result->fetch_array(MYSQLI_NUM) )
+        //        $mysqli->query( 'DROP TABLE IF EXISTS '.$row[0] );
+        //}
+        //$mysqli->query( 'SET foreign_key_checks = 1' );
+        //$mysqli->close();
     }
     
     function RunCommand($cmd)
@@ -311,15 +313,7 @@
     {
         global $configInput;
         
-        $cmd = 'rsync -avz -e "ssh -p '
-                .$configInput['origin_port']
-                .'" '
-                .$configInput['origin_user'].'@'.$configInput['origin_server'].':'.$configInput['origin_root'].' '
-                .$configInput['web_root']
-                .$configInput['new_root'].' '
-                .' --copy-links '.$configInput['rsync_flags'];
-                
-        print_r( $cmd."\nPassword:");
+        print_r( $configInput['rsync_cmd']."\nPassword:");
         print_r($configInput['ssh_pass']);
         
         while( @ ob_end_flush() ); // End any output buffers
@@ -355,9 +349,18 @@
     {
         global $configInput;
         
+        if( file_exists($configInput['new_root']."app/etc/local.xml") )
+            $configInput['magento'] = 1;
+        else if( file_exists($configInput['new_root']."app/etc/env.php") )
+            $configInput['magento'] == 2;
+        else
+        {
+            die( "Error: Could not find local.xml or env.php." );
+        }
+        
         if( $configInput['magento'] == 2 )
         {
-            $path = $configInput['web_root']."app/etc/env.php";
+            $path = $configInput['new_root']."app/etc/env.php";
             
             try {
                 $data = include $path;
@@ -375,7 +378,7 @@
         }
         else
         {
-            $path = $configInput['web_root']."app/etc/local.xml";
+            $path = $configInput['new_root']."app/etc/local.xml";
             $xmlFile = file_get_contents($path);
             $xml = new SimpleXMLExtended($xmlFile);
             
